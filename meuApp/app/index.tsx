@@ -1,56 +1,128 @@
 import { useState, useEffect } from 'react';
-import { View, TextInput, Button, FlatList, Text, StyleSheet } from 'react-native';
+import {
+  View,
+  TextInput,
+  Button,
+  FlatList,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ActivityIndicator,
+  Alert
+} from 'react-native';
+
+type Tarefa = {
+  _id: string;
+  titulo: string;
+  concluida: boolean;
+};
 
 export default function App() {
-  const [tarefas, setTarefas] = useState([]);
+  const [tarefas, setTarefas] = useState<Tarefa[]>([]);
   const [texto, setTexto] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [editandoId, setEditandoId] = useState<string | null>(null);
 
   const API = 'https://didactic-space-acorn-x5qx5qw94r6qcp577-3000.app.github.dev/tarefas';
 
-  // LISTAR
   async function carregar() {
     try {
+      setLoading(true);
+
       const res = await fetch(API);
       const data = await res.json();
-      setTarefas(data);
+
+      const ordenado = data.sort((a: Tarefa, b: Tarefa) =>
+        a.concluida - b.concluida
+      );
+
+      setTarefas(ordenado);
     } catch (error) {
-      console.log('Erro ao carregar:', error);
+      Alert.alert('Erro ao carregar tarefas');
+    } finally {
+      setLoading(false);
     }
   }
 
-  // ADICIONAR
-  async function adicionar() {
+  async function adicionarOuEditar() {
     if (!texto) return;
 
     try {
-      await fetch(API, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          titulo: texto
-        })
-      });
+      setLoading(true);
+
+      if (editandoId) {
+        await fetch(`${API}/${editandoId}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            titulo: texto
+          })
+        });
+
+        setEditandoId(null);
+      } else {
+        await fetch(API, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            titulo: texto
+          })
+        });
+      }
 
       setTexto('');
       carregar();
-    } catch (error) {
-      console.log('Erro ao adicionar:', error);
+    } catch {
+      Alert.alert('Erro ao salvar tarefa');
+    } finally {
+      setLoading(false);
     }
   }
 
-  // DELETAR
-  async function deletar(id) {
+  async function deletar(id: string) {
     try {
       await fetch(`${API}/${id}`, {
         method: 'DELETE'
       });
 
       carregar();
-    } catch (error) {
-      console.log('Erro ao deletar:', error);
+    } catch {
+      Alert.alert('Erro ao deletar');
     }
+  }
+
+  async function concluir(item: Tarefa) {
+    try {
+      await fetch(`${API}/${item._id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          concluida: !item.concluida
+        })
+      });
+
+      carregar();
+    } catch {
+      Alert.alert('Erro ao atualizar');
+    }
+  }
+
+  function editar(item: Tarefa) {
+    setTexto(item.titulo);
+    setEditandoId(item._id);
+  }
+
+  function detalhes(item: Tarefa) {
+    Alert.alert(
+      'Detalhes da tarefa',
+      `Título: ${item.titulo}\nConcluída: ${item.concluida ? 'Sim' : 'Não'}`
+    );
   }
 
   useEffect(() => {
@@ -66,18 +138,31 @@ export default function App() {
         style={styles.input}
       />
 
-      <Button title="Adicionar" onPress={adicionar} />
+      <Button
+        title={editandoId ? 'Salvar edição' : 'Adicionar'}
+        onPress={adicionarOuEditar}
+      />
+
+      {loading && <ActivityIndicator size="large" />}
 
       <FlatList
         data={tarefas}
         keyExtractor={item => item._id}
         renderItem={({ item }) => (
           <View style={styles.item}>
-            <Text>{item.titulo}</Text>
-            <Button
-              title="Deletar"
-              onPress={() => deletar(item._id)}
-            />
+            <TouchableOpacity onPress={() => detalhes(item)}>
+              <Text
+                style={{
+                  textDecorationLine: item.concluida ? 'line-through' : 'none'
+                }}
+              >
+                {item.titulo}
+              </Text>
+            </TouchableOpacity>
+
+            <Button title="✔" onPress={() => concluir(item)} />
+            <Button title="Editar" onPress={() => editar(item)} />
+            <Button title="Deletar" onPress={() => deletar(item._id)} />
           </View>
         )}
       />

@@ -27,11 +27,15 @@ app.get('/tarefas', async (req,res) => {
   res.json(t);
 });
 
+app.get('/tarefas/:id', async (req,res) => {
+  const tarefa = await Tarefa.findById(req.params.id);
+  res.json(tarefa);
+});
+
 app.put('/tarefas/:id', async (req,res) => {
   const t = await Tarefa.findByIdAndUpdate(req.params.id, req.body, { new:true });
   res.json(t);
 });
-
 app.delete('/tarefas/:id', async (req,res) => {
   await Tarefa.findByIdAndDelete(req.params.id);
   res.json({ ok:true });
