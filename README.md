@@ -1,6 +1,6 @@
 # ExercicioRecatNative
 
 Integrantes:
-Giovanni França da Silva
-Eduardo Santos Urbano
+Giovanni França da Silva,
+Eduardo Santos Urbano,
 Gabriel Kevin
